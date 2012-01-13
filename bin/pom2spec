@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+# vim: ai:ts=4:sw=4:et
+#
+# Pulls metadata from a Maven2 POM file on Maven Central
+# to generate a .spec file (on STDOUT) that merely warps
+# the .jar file(s) into noarch RPM files.
+#
+# Note that it does *NOT* create a .spec file that builds
+# the upstream sources, that would just be too much awesome
+# magic.
+#
+# Copyright 2011 Pascal Bleser <pascal.bleser@opensuse.org>
+#
+# This file is licensed under the
+# GNU Lesser General Public License version 2.1 or later:
+# http://www.gnu.org/licenses/lgpl-2.1.html
+#
+$:.push(File.join(File.dirname(__FILE__), '..', 'lib'))
+
+require 'rubygems'
+#require 'trollop'
+
+require 'pom2spec/cli'
+
+#opts = Trollop::options do
+#  opt :repourl, "Maven repository url", :default => "http://repo1.maven.org/maven2"
+#  opt :include_requires_as_buildrequires, "Include Requires as BuildRequires", :type => :boolean, :default => true
+#  opt :email, "email address", :default => "foo@bar.com"
+#  opt :debug, "Set debug mode"
+#end
+
+
+
+Pom2spec::MainCommand.run
+
+exit(0)
+if ARGV.size == 0 || ARGV.size == 1
+  # Figure out the groupId, name and version
+  top = File.basename(Dir.pwd)
+  top =~ /^(.+)\.([^\.]+)(?:-(\d.?))?$/
+  group, name, version = $1, $2, $3
+
+  puts "#{group} #{name} #{version}"
+
+  unless group && name
+    log.fatal "when groupId and artifactId are not specified as parameters, the current directory must reflect groupId.artifactId"
+    exit(1)
+  end
+
+  version_override = ARGV.shift
+
+  if version_override && version
+    log.fatal "version is already specified in the name of the current working directory (#{top} -> #{version})"
+    exit(1)
+  end
+elsif ARGV.size == 3 || ARGV.size == 3
+  group = ARGV.shift
+  name = ARGV.shift
+  version = ARGV.shift
+
+  group.gsub!(/\//, '.')
+end
+
+
+#puts versions
+
+

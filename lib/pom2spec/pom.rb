@@ -43,8 +43,12 @@ module Pom2spec
         !@version.nil?
       end
 
+      def to_s_without_version
+        "#{group_id}:#{artifact_id}"
+      end
+
       def to_s
-        ret = "#{group_id}:#{artifact_id}"
+        ret = to_s_without_version
         if has_version?
           ret = "#{ret}:#{version}"
         end
@@ -54,22 +58,22 @@ module Pom2spec
 
     # @param [String] url url or path
     def self.open(url)
-      Pom2spec.logger.info "Reading pom from '#{url}'"
+      #Pom2spec.logger.info "Reading pom from '#{url}'"
       Pom.new(Kernel::open(url))
     end
 
     # Constructs a POM
     # @param [IO] io pom file
     def initialize(io)
-      @doc = REXML::Document.new(io)
+      @doc = Nokogiri::XML(io)
     end
 
     def parent
       return @parent if @parent
-      if @doc.elements["/project/parent"]
-        a = @doc.elements["/project/parent/artifactId"].text.to_s
-        g = @doc.elements["/project/parent/groupId"].text.to_s
-        v = @doc.elements["/project/parent/version"].text.to_s
+      if not @doc.xpath("/xmlns:project/xmlns:parent").empty?
+        a = @doc.xpath("/xmlns:project/xmlns:parent/xmlns:artifactId").text.to_s
+        g = @doc.xpath("/xmlns:project/xmlns:parent/xmlns:groupId").text.to_s
+        v = @doc.xpath("/xmlns:project/xmlns:parent/xmlns:version").text.to_s
         @parent = MavenSearch.pom_for(Pom::Key.new(g, a, v))
         return @parent
       end
@@ -78,25 +82,30 @@ module Pom2spec
 
     # @return [String] packaging for this project
     def packaging
-      node = @doc.elements["/project/packaging"]
-      node ? node.text : 'jar'
+      node = @doc.xpath("/xmlns:project/xmlns:packaging")
+      node.empty? ? 'jar' : node.text
     end
 
     def module_names
-      project_array_attribute("modules")
+      return [] if packaging != 'pom'
+      @doc.xpath("/xmlns:project/xmlns:modules/xmlns:module").map(&:text)    
     end
 
+    # @return [Array<Pom>] Modules for this project, if packaging is of pom type
     def modules
+      module_names.map do |name|
+        MavenSearch.pom_for(Pom::Key.new(group_id, name))
+      end
     end
 
     # @return [String] the group id for the project
     def group_id
-      @doc.elements["/project/groupId"].text
+      project_attribute('groupId')
     end
 
     # @return [String] id for the artifact
     def artifact_id
-      @doc.elements["/project/artifactId"].text
+      @doc.xpath("/xmlns:project/xmlns:artifactId").text
     end 
 
     # @return [String] artifact's version
@@ -106,8 +115,10 @@ module Pom2spec
 
     # @return [String] license description
     def licenses
-      elements = @doc.elements['/project/licenses//name']
-      return elements.to_a.join(",") if elements
+      elements = @doc.xpath('/xmlns:project/xmlns:licenses//xmlns:name')
+      return elements.to_a.join(",") if not elements.empty?
+      parent_licenses = parent.licenses
+      return parent_licenses if parent_licenses
       nil
     end
 
@@ -129,36 +140,31 @@ module Pom2spec
     # @return [String] attribute project/attrname
     # @visibility private
     def project_attribute(name)
-      value = @doc.elements["/project/#{name}"]
+      value = @doc.xpath("/xmlns:project/xmlns:#{name}").first
       return expand_properties(value.text) if value
       return parent.project_attribute(name) if parent
       raise "Attribute #{name} not defined in project and no parent to ask for it"
     end
 
     def project_array_attribute(name)
-      elements = @doc.elements["/project/#{name}"]  
-      return elements.select do |x| 
-        !x.is_a?(REXML::Text)
-      end.map(&:text) if elements
-      return parent.project_array_attribute if parent
+      elements = @doc.xpath("/xmlns:project/xmlns:#{name}").map(&:text)
+      return parent.project_array_attribute(name) if parent
       raise "Attribute #{name} not defined in project and no parent to ask for it"
     end
 
     # return [Array<ArtifactIdentifier>] artifact dependencies
     def dependencies
-      @doc.elements['/project/dependencies'].select do |x| 
-        !x.is_a?(REXML::Text)
-      end.map do |dep|
-        Key.new(dep.elements['./groupId'].text, dep.elements['./artifactId'].text, dep.elements['./version'].text)
-      end.map(&:to_s).map do |x|
-        expand_properties(x)
+      @doc.xpath("/xmlns:project/xmlns:dependencies/xmlns:dependency").map do |dep|
+        Key.new(dep.xpath('./xmlns:groupId').text,
+                dep.xpath('./xmlns:artifactId').text,
+                expand_properties(dep.xpath('./xmlns:version').text))
       end
     end
 
     # @return [String] return property of given name. Looks in parent if
     #   not defined. 
     def property(name)
-      element = @doc.elements["/project/properties/#{name}"]
+      element = @doc.xpath("/xmlns:project/xmlns:properties/xmlns:#{name}")
       ret = nil
       if element
         return element.text.to_s
@@ -175,6 +181,14 @@ module Pom2spec
         when true then expand_properties(ret)
         else ret
       end
+    end
+
+    def jar_url
+      MavenSearch.artifact_url_for(Key.new(group_id, artifact_id, version), 'jar')
+    end
+
+    def pom_url
+      MavenSearch.artifact_url_for(Key.new(group_id, artifact_id, version), 'pom')
     end
 
   end

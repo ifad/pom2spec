@@ -1,8 +1,11 @@
 require 'erb'
+require 'uri'
 
 module Pom2spec
 
   class SpecAdapter
+
+    LICENSE_FIX_FILE_URL = 'https://github.com/openSUSE/obs-service-format_spec_file/blob/master/licenses_changes.txt'
 
     attr_reader :pom
 
@@ -21,33 +24,112 @@ module Pom2spec
       @binary
     end
 
-    attr_accessor :name_suffix
+    attr_writer :name_suffix
 
-    def initialize(pom)
+    def initialize(pom, opts={})
       @pom = pom
-      @binary = false
+      
+      opts[:binary] ||= false
+      @binary = opts[:binary]
+      @license_table = Hash.new
+
+      # Load licenses
+      open(LICENSE_FIX_FILE_URL) do |f|
+        Pom2spec.logger.info "Loading licenses..."
+        f.each_line do |line|
+          spdx, orig = line.split(' ', 2)
+          @license_table[orig] = spdx
+        end
+      end
     end
 
     def name
-      ret = @name ? @name : pom.artifact_id
-      "#{ret}#{name_suffix}"
+      @name ? @name : pom.artifact_id
     end
 
-    def print_tree
-      raise "Only"
+    def name_suffix
+      return @name_suffix if @name_suffix
+      return '-bin' if binary?
+    end
+
+    def name_with_suffix
+      "#{name}#{name_suffix}"
+    end
+
+    def license
+      orig = pom.licenses
+      if @license_table.has_key?(orig)
+        return @license_table[orig]
+      end
+      return "#{orig}"
+    end
+
+    def modules
+      if not @modules
+        @modules = pom.modules.map do |m|
+          SpecAdapter.new(m, :binary => binary?)
+        end
+      end
+      @modules
+    end
+
+    def summary
+      pom.name
+    end
+
+    def description
+      pom.description
+    end
+
+    def jar_url
+      pom.jar_url.gsub(/#{pom.version}/, "%{version}")
+    end
+
+    def pom_url
+      pom.pom_url.gsub(/#{pom.version}/, "%{version}")
+    end
+
+    def local_jar
+      File.basename(URI.parse(pom.jar_url).path)
+    end
+
+    def local_pom
+      File.basename(URI.parse(pom.pom_url).path)
+    end
+
+    def source_files
+      srcs = []
+      srcs << pom.jar_url
+      pom.modules.each do |mod|
+        srcs << mod.jar_url
+      end
+      srcs
     end
 
     def to_spec
 
       template = %q{
-Name:     <%= name %>
+Name:     <%= name_with_suffix %>
 Version:  <%= pom.version %>
 Release:  0
-License:  <%= pom.licenses ? pom.licenses : "FIXME" %>
+License:  <%= license %>
 Url:      <%= pom.url %>
-Summary:  <%= pom.name %>
+Group:    Development/Libraries/Java
+Summary:  <%= summary %>
 
-<% if binary? %>
+<% [self, *modules].each_with_index do |modul, index| %>
+# <%= modul.name_with_suffix %>
+<% unless modul.pom.packaging == 'pom' %>
+Source<%= index*10 + 0 %>:  <%= modul.jar_url %>
+<% end %>
+Source<%= index*10 + 1 %>:  <%= modul.pom_url %>
+<% end %>
+
+<% if name_with_suffix != name %>
+Provides:  <%= name %>
+<% end %>
+
+<% unless binary? %>
 <% pom.dependencies.each do |dep| %>
 BuildRequires: java(<%= dep %>)
 <% end %>
@@ -56,10 +138,55 @@ BuildRequires: java(<%= dep %>)
 Requires: java(<%= dep %>)
 <% end %>
 
+<% modules.each do |modul| %>
+# <%= modul.name_with_suffix %>
+<% if modul.name_with_suffix != modul.name %>
+Provides:  <%= modul.name %>
+<% end %>
+<% modul.pom.dependencies.each do |dep| %>
+Requires: java(<%= dep.to_s_without_version %>)
+<% end %>
+<% end %>
+
+
 %description
 <%= pom.description %>
 
+
+%prep
+
+%build
+
+%install
+
+# jars
+install -d -m 0755 %{buildroot}%{_javadir}
+
+<% [self, *modules].each do |modul| %>
+<% unless modul.pom.packaging == 'pom' %>
+install -m 644 <%= modul.local_jar %>   %{buildroot}%{_javadir}/<%= modul.name %>.jar  
+<% end %>
+
+<% end %>  
+# poms
+install -d -m 755 %{buildroot}%{_mavenpomdir}
+
+<% [self, *modules].each do |modul| %>
+install -pm 644 <%= modul.local_pom %> \
+    %{buildroot}%{_mavenpomdir}/JPP-<%= modul.name %>.pom
+<% unless modul.pom.packaging == 'pom' %>
+%add_maven_depmap JPP-<%= modul.name %>.pom <%= modul.name %>.jar
+<% end %>
+
+<% end %>
+
+%files
+%defattr(root,-,-)
+%{_mavenpomdir}/*
+%{_javadir}/*
+
       }
+
       message = ERB.new(template, 0, "<>")
       puts message.result(binding)
     end

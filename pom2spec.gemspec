@@ -23,4 +23,5 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'clamp'
   s.add_runtime_dependency 'open-uri-cached'
   s.add_runtime_dependency 'versionomy'
+  s.add_runtime_dependency 'nokogiri'
 end

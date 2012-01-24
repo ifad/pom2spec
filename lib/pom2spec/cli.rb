@@ -15,7 +15,7 @@ class CleanLog < Logger::Formatter
 end
 
 # Initialize global logger
-Pom2spec.logger = ::Logger.new(STDOUT)
+Pom2spec.logger = ::Logger.new(STDERR)
 Pom2spec.logger.datetime_format = "%Y-%m-%d %H:%M "
 Pom2spec.logger.level = ::Logger::INFO
 Pom2spec.logger.formatter = CleanLog.new
@@ -31,8 +31,10 @@ module Pom2spec
 
   class GenerateCommand < Pom2spec::CommandBase
 
-    option ['-bin', '--binary'], :flag, "Creates a binary package (sets suffix to -bin)"
+    option ['-b', '--binary'], :flag, "Creates a binary package (sets suffix to -bin)"
     option ['-s', '--bootstrap'], :flag, "Creates a bootstrap package. Like binary but with -bootstrap suffix."    
+
+    option ['-d', '--download'], :flags, 'Download referenced sources'
 
     parameter "KEY", "artifact identifier (group:artifact-id[:version])"
     
@@ -63,10 +65,15 @@ module Pom2spec
         return 1
       end
 
-      adapter.name_suffix = '-bin' if binary? 
-      adapter.name_suffix = '-bootstrap' if bootstrap? 
+      adapter.binary = binary?
       
       puts adapter.to_spec
+
+      log.info "Downloading sources.."
+      adapter.source_files.each do |url|
+        log.info "   #{url}"
+      end
+
     end
   end
 

@@ -24,7 +24,7 @@ class Pom_test < Test::Unit::TestCase
             'logkit:logkit:1.0.1',
             'avalon-framework:avalon-framework:4.1.3',
             'javax.servlet:servlet-api:2.3']
-  	assert_equal(deps, pom.dependencies)
+  	assert_equal(deps, pom.dependencies.map(&:to_s))
 
     assert_equal('1.2', pom.property('maven.compile.source'))
     assert_equal('Hello 1.2 and ', pom.expand_properties('Hello ${maven.compile.source} and ${undefined}'))

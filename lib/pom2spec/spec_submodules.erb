@@ -1,0 +1,71 @@
+Name:     <%= name_with_suffix %>
+Version:  <%= pom.version %>
+Release:  0
+License:  <%= license %>
+Url:      <%= pom.url %>
+Group:    Development/Libraries/Java
+Summary:  <%= summary %>
+
+<% unless pom.packaging == 'pom' %>
+Source0:  <%= pom.jar_url.gsub(/#{pom.version}/, "%{version}") %>
+<% end %>
+Source1:  <%= pom.pom_url.gsub(/#{pom.version}/, "%{version}") %>
+
+<% modules.each_with_index do |modul, index| %>
+
+# <%= modul.name_with_suffix %>
+<% unless modul.pom.packaging == 'pom' %>
+Source<%= (index + 1)*10 + 0 %>:  <%= modul.pom.jar_url.gsub(/#{pom.version}/, "%{version}") %>
+Source<%= (index + 1)*10 + 1 %>:  <%= modul.pom.pom_url.gsub(/#{pom.version}/, "%{version}") %>
+<% end %>
+<% end %>
+
+<% if name_with_suffix != name %>
+Provides:  <%= name %>
+<% end %>
+
+<% unless binary? %>
+<% pom.dependencies.each do |dep| %>
+BuildRequires: java(<%= dep %>)
+<% end %>
+<% end %>
+<% pom.dependencies.each do |dep| %>
+Requires: java(<%= dep %>)
+<% end %>
+
+%description
+<%= pom.description %>
+
+<% modules.each do |modul| %>
+%package -n <%= modul.name_with_suffix %>
+Summary:  <%= modul.summary %>
+<% if modul.name_with_suffix != modul.name %>
+Provides:  <%= modul.name %>
+<% end %>
+%description -n <%= modul.name_with_suffix %>
+<%= modul.description %>
+
+<% modul.pom.dependencies.each do |dep| %>
+Requires: java(<%= dep.to_s_without_version %>)
+<% end %>
+
+<% end %>
+
+%prep
+
+%build
+
+%install
+
+# jars
+install -d -m 0755 %{buildroot}%{_javadir}
+install -m 644 target/%{name}-%{version}.jar   %{buildroot}%{_javadir}/%{name}.jar
+
+# poms
+install -d -m 755 %{buildroot}%{_mavenpomdir}
+install -pm 644 pom.xml \
+    %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
+
+
+%add_maven_depmap JPP-%{name}.pom %{name}.jar
+

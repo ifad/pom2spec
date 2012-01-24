@@ -2,6 +2,7 @@ require 'pom2spec'
 require 'open-uri/cached'
 #require 'rubygems'
 require 'versionomy'
+require 'nokogiri'
 
 module Pom2spec
 
@@ -10,29 +11,29 @@ module Pom2spec
     #REPO_URL = "http://search.maven.org/remotecontent?filepath="
 
     def self.open(url)
-      Pom2spec.logger.info "Reading metadata from '#{url}'"
+      #Pom2spec.logger.info "Reading metadata from '#{url}'"
       Metadata.new(Kernel::open(url))
     end
 
     def initialize(io)
-      @doc = REXML::Document.new(io)
+      @doc = Nokogiri::XML(io)
     end
 
     def group_id
-      @doc.elements["/metadata/groupId"].first
+      @doc.xpath("/metadata/groupId").text
     end
 
     def artifact_id
-      @doc.elements["/metadata/artifactId"].first
+      @doc.xpath("/metadata/artifactId").text
     end
 
     # @return [Array<String>] versions for +key+
     def versions
-      Pom2spec.logger.warn "groupId in maven-metadata.xml file is #{group_id}" if group_id != @group_id
+      #Pom2spec.logger.warn "groupId in maven-metadata.xml file is #{group_id} vs #{@group_id}" if group_id != @group_id
 
       versions = []
-      @doc.elements["/metadata/versioning/versions"].elements.each('version') do |vel|
-        versions << vel.text.to_s
+      @doc.xpath("/metadata/versioning/versions/version").each do |vel|
+        versions << vel.text
       end
       versions
     end

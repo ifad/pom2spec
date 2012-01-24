@@ -67,12 +67,15 @@ module Pom2spec
 
       adapter.binary = binary?
       
-      puts adapter.to_spec
+    
+      filename = "#{adapter.name_with_suffix}.spec"
+      log.info "Writing #{filename}"
 
-      log.info "Downloading sources.."
-      adapter.source_files.each do |url|
-        log.info "   #{url}"
+      File.open(filename, "w") do |f|
+        f << adapter.to_spec
       end
+      log.info "Done"
+      log.info "call /usr/lib/build/spectool --source --download *.spec"
 
     end
   end

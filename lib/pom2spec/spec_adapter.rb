@@ -89,23 +89,6 @@ module Pom2spec
       pom.pom_url.gsub(/#{pom.version}/, "%{version}")
     end
 
-    def local_jar
-      File.basename(URI.parse(pom.jar_url).path)
-    end
-
-    def local_pom
-      File.basename(URI.parse(pom.pom_url).path)
-    end
-
-    def source_files
-      srcs = []
-      srcs << pom.jar_url
-      pom.modules.each do |mod|
-        srcs << mod.jar_url
-      end
-      srcs
-    end
-
     def to_spec
 
       template = %q{
@@ -162,17 +145,17 @@ Requires: java(<%= dep.to_s_without_version %>)
 # jars
 install -d -m 0755 %{buildroot}%{_javadir}
 
-<% [self, *modules].each do |modul| %>
+<% [self, *modules].each_with_index do |modul, index| %>
 <% unless modul.pom.packaging == 'pom' %>
-install -m 644 <%= modul.local_jar %>   %{buildroot}%{_javadir}/<%= modul.name %>.jar  
+install -m 644 %{SOURCE<%= index*10 + 0 %>} %{buildroot}%{_javadir}/<%= modul.name %>.jar  
 <% end %>
 
 <% end %>  
 # poms
 install -d -m 755 %{buildroot}%{_mavenpomdir}
 
-<% [self, *modules].each do |modul| %>
-install -pm 644 <%= modul.local_pom %> \
+<% [self, *modules].each_with_index do |modul, index| %>
+install -pm 644 %{SOURCE<%= index*10 + 1 %>} \
     %{buildroot}%{_mavenpomdir}/JPP-<%= modul.name %>.pom
 <% unless modul.pom.packaging == 'pom' %>
 %add_maven_depmap JPP-<%= modul.name %>.pom <%= modul.name %>.jar

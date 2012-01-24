@@ -24,7 +24,14 @@ module Pom2spec
       @binary
     end
 
+    # @return True is the spec will contain JPP
+    # information
+    def jpp?
+      @jpp
+    end
+
     attr_writer :name_suffix
+    attr_writer :jpp
 
     @@license_table = Hash.new
     # Load licenses
@@ -101,6 +108,10 @@ Summary:  <%= summary %>
 
 <% [self, *modules].each_with_index do |modul, index| %>
 # <%= modul.name_with_suffix %>
+Provides: java(<%= pom.key.to_s_without_version %>)
+<% if jpp? %>
+Provides: mvn(<%= pom.key.to_s_without_version %>)
+<% end %>
 <% unless modul.pom.packaging == 'pom' %>
 Source<%= index*10 + 0 %>:  <%= modul.jar_url %>
 <% end %>
@@ -118,6 +129,9 @@ BuildRequires: java(<%= dep %>)
 <% end %>
 <% pom.dependencies.each do |dep| %>
 Requires: java(<%= dep %>)
+<% if jpp? %>
+Requires: mvn(<%= dep %>)
+<% end %>  
 <% end %>
 
 <% modules.each do |modul| %>
@@ -149,7 +163,8 @@ install -d -m 0755 %{buildroot}%{_javadir}
 install -m 644 %{SOURCE<%= index*10 + 0 %>} %{buildroot}%{_javadir}/<%= modul.name %>.jar  
 <% end %>
 
-<% end %>  
+<% end %>
+<% if jpp? %>
 # poms
 install -d -m 755 %{buildroot}%{_mavenpomdir}
 
@@ -161,11 +176,15 @@ install -pm 644 %{SOURCE<%= index*10 + 1 %>} \
 <% end %>
 
 <% end %>
+<% end %>
 
 %files
-%defattr(root,-,-)
-%{_mavenpomdir}/*
+%defattr(-,root,root,0755)
 %{_javadir}/*
+<% if jpp? %>
+%{_mavenpomdir}/*
+<% end %>
+
 
       }
 

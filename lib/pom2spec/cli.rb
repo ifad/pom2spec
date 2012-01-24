@@ -35,6 +35,7 @@ module Pom2spec
     option ['-s', '--bootstrap'], :flag, "Creates a bootstrap package. Like binary but with -bootstrap suffix."    
 
     option ['-d', '--download'], :flag, 'Download referenced sources'
+    option ['--[no-]jpp'], :flag, 'Add JPP/Maven depmaps', :default => true
 
     parameter "KEY", "artifact identifier (group:artifact-id[:version])"
     
@@ -66,6 +67,7 @@ module Pom2spec
       end
 
       adapter.binary = binary?
+      adapter.jpp = jpp?
 
       filename = "#{adapter.name_with_suffix}.spec"
       log.info "Writing #{filename}"

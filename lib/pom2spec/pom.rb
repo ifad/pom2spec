@@ -68,6 +68,10 @@ module Pom2spec
       @doc = Nokogiri::XML(io)
     end
 
+    def key
+      Pom::Key.new(group_id, artifact_id, version)
+    end
+
     def parent
       return @parent if @parent
       if not @doc.xpath("/xmlns:project/xmlns:parent").empty?

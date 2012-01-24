@@ -34,7 +34,7 @@ module Pom2spec
     option ['-b', '--binary'], :flag, "Creates a binary package (sets suffix to -bin)"
     option ['-s', '--bootstrap'], :flag, "Creates a bootstrap package. Like binary but with -bootstrap suffix."    
 
-    option ['-d', '--download'], :flags, 'Download referenced sources'
+    option ['-d', '--download'], :flag, 'Download referenced sources'
 
     parameter "KEY", "artifact identifier (group:artifact-id[:version])"
     
@@ -66,16 +66,19 @@ module Pom2spec
       end
 
       adapter.binary = binary?
-      
-    
+
       filename = "#{adapter.name_with_suffix}.spec"
       log.info "Writing #{filename}"
 
       File.open(filename, "w") do |f|
         f << adapter.to_spec
       end
+
       log.info "Done"
-      log.info "call /usr/lib/build/spectool --source --download *.spec"
+
+      if download?
+        system("/usr/lib/build/spectool --source --download *.spec")
+      end
 
     end
   end

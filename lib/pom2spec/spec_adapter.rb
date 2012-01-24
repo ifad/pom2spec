@@ -26,21 +26,20 @@ module Pom2spec
 
     attr_writer :name_suffix
 
+    @@license_table = Hash.new
+    # Load licenses
+    open(LICENSE_FIX_FILE_URL) do |f|
+      f.each_line do |line|
+        spdx, orig = line.split(' ', 2)
+        @@license_table[orig] = spdx
+      end
+    end
+
     def initialize(pom, opts={})
       @pom = pom
       
       opts[:binary] ||= false
       @binary = opts[:binary]
-      @license_table = Hash.new
-
-      # Load licenses
-      open(LICENSE_FIX_FILE_URL) do |f|
-        Pom2spec.logger.info "Loading licenses..."
-        f.each_line do |line|
-          spdx, orig = line.split(' ', 2)
-          @license_table[orig] = spdx
-        end
-      end
     end
 
     def name
@@ -58,8 +57,8 @@ module Pom2spec
 
     def license
       orig = pom.licenses
-      if @license_table.has_key?(orig)
-        return @license_table[orig]
+      if @@license_table.has_key?(orig)
+        return @@license_table[orig]
       end
       return "#{orig}"
     end
@@ -171,7 +170,7 @@ install -pm 644 %{SOURCE<%= index*10 + 1 %>} \
       }
 
       message = ERB.new(template, 0, "<>")
-      puts message.result(binding)
+      message.result(binding)
     end
 
   end

@@ -20,5 +20,7 @@ Gem::Specification.new do |s|
 
   # specify any dependencies here; for example:
   # s.add_development_dependency "rspec"
-  s.add_runtime_dependency "clamp"
+  s.add_runtime_dependency 'clamp'
+  s.add_runtime_dependency 'open-uri-cached'
+  s.add_runtime_dependency 'versionomy'
 end

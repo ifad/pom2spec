@@ -1,7 +1,7 @@
 require "pom2spec/version"
 require "pom2spec/metadata"
-require "pom2spec/artefact_identifier"
 require "pom2spec/pom"
+require "pom2spec/spec_adapter"
 require 'logger'
 
 module Pom2spec

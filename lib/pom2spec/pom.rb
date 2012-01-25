@@ -187,12 +187,8 @@ module Pom2spec
       end
     end
 
-    def jar_url
-      MavenSearch.artifact_url_for(Key.new(group_id, artifact_id, version), 'jar')
-    end
-
-    def pom_url
-      MavenSearch.artifact_url_for(Key.new(group_id, artifact_id, version), 'pom')
+    def url_for(fmt)
+      MavenSearch.artifact_url_for(Key.new(group_id, artifact_id, version), fmt)
     end
 
   end

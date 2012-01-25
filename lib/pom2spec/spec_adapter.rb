@@ -6,6 +6,7 @@ module Pom2spec
   class SpecAdapter
 
     LICENSE_FIX_FILE_URL = 'https://github.com/openSUSE/obs-service-format_spec_file/blob/master/licenses_changes.txt'
+    LOCAL_MAVEN_REPOSITORY = '%{_datadir}/maven/repository/'
 
     attr_reader :pom
 
@@ -24,14 +25,14 @@ module Pom2spec
       @binary
     end
 
-    # @return True is the spec will contain JPP
+    # @return True 
     # information
-    def jpp?
-      @jpp
+    def legacy_symlinks?
+      @legacy_symlinks
     end
 
     attr_writer :name_suffix
-    attr_writer :jpp
+    attr_writer :legacy_symlinks
 
     @@license_table = Hash.new
     # Load licenses
@@ -87,12 +88,12 @@ module Pom2spec
       pom.description
     end
 
-    def jar_url
-      pom.jar_url.gsub(/#{pom.version}/, "%{version}")
+    def url_for(fmt)
+      pom.url_for(fmt).gsub(/#{pom.version}/, "%{version}")
     end
 
-    def pom_url
-      pom.pom_url.gsub(/#{pom.version}/, "%{version}")
+    def install_path_for(fmt)
+      LOCAL_MAVEN_REPOSITORY + File.join([*pom.group_id.split('.'), pom.artifact_id, File.basename(URI.parse(pom.url_for(fmt)).path)])
     end
 
     def to_spec
@@ -109,13 +110,11 @@ Summary:  <%= summary %>
 <% [self, *modules].each_with_index do |modul, index| %>
 # <%= modul.name_with_suffix %>
 Provides: java(<%= pom.key.to_s_without_version %>)
-<% if jpp? %>
-Provides: mvn(<%= pom.key.to_s_without_version %>)
-<% end %>
+
 <% unless modul.pom.packaging == 'pom' %>
-Source<%= index*10 + 0 %>:  <%= modul.jar_url %>
+Source<%= index*10 + 0 %>:  <%= modul.url_for(:jar) %>
 <% end %>
-Source<%= index*10 + 1 %>:  <%= modul.pom_url %>
+Source<%= index*10 + 1 %>:  <%= modul.url_for(:jar) %>
 <% end %>
 
 <% if name_with_suffix != name %>
@@ -129,9 +128,6 @@ BuildRequires: java(<%= dep %>)
 <% end %>
 <% pom.dependencies.each do |dep| %>
 Requires: java(<%= dep %>)
-<% if jpp? %>
-Requires: mvn(<%= dep %>)
-<% end %>  
 <% end %>
 
 <% modules.each do |modul| %>
@@ -156,35 +152,37 @@ Requires: java(<%= dep.to_s_without_version %>)
 %install
 
 # jars
+
+<% if legacy_symlinks? %>
 install -d -m 0755 %{buildroot}%{_javadir}
+<% end %>
 
 <% [self, *modules].each_with_index do |modul, index| %>
+
 <% unless modul.pom.packaging == 'pom' %>
-install -m 644 %{SOURCE<%= index*10 + 0 %>} %{buildroot}%{_javadir}/<%= modul.name %>.jar  
+%{__install} -Dm 644 %{SOURCE<%= index*10 + 0 %>} %{buildroot}<%= modul.install_path_for(:jar) %>
+
+<% if legacy_symlinks? %>
+%{__ln_s} <%= modul.install_path_for(:jar) %> %{buildroot}%{_javadir}/<%= modul.name %>.jar
 <% end %>
 
 <% end %>
-<% if jpp? %>
+
+<% end %>
+
+
 # poms
-install -d -m 755 %{buildroot}%{_mavenpomdir}
-
 <% [self, *modules].each_with_index do |modul, index| %>
-install -pm 644 %{SOURCE<%= index*10 + 1 %>} \
-    %{buildroot}%{_mavenpomdir}/JPP-<%= modul.name %>.pom
-<% unless modul.pom.packaging == 'pom' %>
-%add_maven_depmap JPP-<%= modul.name %>.pom <%= modul.name %>.jar
-<% end %>
-
-<% end %>
+%{__install} -Dpm 644 %{SOURCE<%= index*10 + 1 %>} %{buildroot}<%= modul.install_path_for(:pom) %>
 <% end %>
 
 %files
 %defattr(-,root,root,0755)
+%dir %{_datadir}/maven/repository
+%{_datadir}/maven/repository/*
+<% if legacy_symlinks? %>
 %{_javadir}/*
-<% if jpp? %>
-%{_mavenpomdir}/*
 <% end %>
-
 
       }
 

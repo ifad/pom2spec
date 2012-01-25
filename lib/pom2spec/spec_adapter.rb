@@ -114,7 +114,7 @@ Provides: java(<%= pom.key.to_s_without_version %>)
 <% unless modul.pom.packaging == 'pom' %>
 Source<%= index*10 + 0 %>:  <%= modul.url_for(:jar) %>
 <% end %>
-Source<%= index*10 + 1 %>:  <%= modul.url_for(:jar) %>
+Source<%= index*10 + 1 %>:  <%= modul.url_for(:pom) %>
 <% end %>
 
 <% if name_with_suffix != name %>

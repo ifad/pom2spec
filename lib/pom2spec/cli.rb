@@ -85,6 +85,30 @@ module Pom2spec
     end
   end
 
+  class ScanRepositoryCommand < Pom2spec::CommandBase
+
+    parameter "PATH", "Repository path" do |path|
+      raise(ArgumentError, "#{path} does not exist") if not File.directory?(path)
+      path
+    end
+
+    def execute
+
+      Dir.glob(File.join(path, "/**/*.pom")).map do |pom_path|
+        begin
+          next Pom2spec::Pom.open(pom_path)
+        rescue Exception => e
+          log.error "Error when reading '#{pom_path}': #{e.message}"
+        end
+      end.map do |pom|
+        "#{pom.group_id}:#{pom.artifact_id}"
+      end.uniq.each do |key|
+        puts key
+      end
+    end
+
+  end
+
   class MainCommand < Pom2spec::CommandBase
 
     self.description = %{
@@ -97,7 +121,8 @@ module Pom2spec
       Pom2spec.logger.level = ::Logger::DEBUG if debug
     end
 
-    subcommand 'generate', 'Generate rpm sources for a given artefact', Pom2spec::GenerateCommand
+    subcommand 'generate', 'Generate rpm sources for a given groupId:artifactId[:version] key', Pom2spec::GenerateCommand
+    subcommand 'scan-repository', 'List groupId:artifactId[:version] keys in a repository', Pom2spec::ScanRepositoryCommand
   end
 
 end

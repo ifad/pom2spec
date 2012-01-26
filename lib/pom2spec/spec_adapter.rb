@@ -98,94 +98,9 @@ module Pom2spec
 
     def to_spec
 
-      template = %q{
-Name:     <%= name_with_suffix %>
-Version:  <%= pom.version %>
-Release:  0
-License:  <%= license %>
-Url:      <%= pom.url %>
-Group:    Development/Libraries/Java
-Summary:  <%= summary %>
-
-<% [self, *modules].each_with_index do |modul, index| %>
-# <%= modul.name_with_suffix %>
-Provides: java(<%= pom.key.to_s_without_version %>)
-
-<% unless modul.pom.packaging == 'pom' %>
-Source<%= index*10 + 0 %>:  <%= modul.url_for(:jar) %>
-<% end %>
-Source<%= index*10 + 1 %>:  <%= modul.url_for(:pom) %>
-<% end %>
-
-<% if name_with_suffix != name %>
-Provides:  <%= name %>
-<% end %>
-
-<% unless binary? %>
-<% pom.dependencies.each do |dep| %>
-BuildRequires: java(<%= dep %>)
-<% end %>
-<% end %>
-<% pom.dependencies.each do |dep| %>
-Requires: java(<%= dep %>)
-<% end %>
-
-<% modules.each do |modul| %>
-# <%= modul.name_with_suffix %>
-<% if modul.name_with_suffix != modul.name %>
-Provides:  <%= modul.name %>
-<% end %>
-<% modul.pom.dependencies.each do |dep| %>
-Requires: java(<%= dep.to_s_without_version %>)
-<% end %>
-<% end %>
-
-
-%description
-<%= pom.description %>
-
-
-%prep
-
-%build
-
-%install
-
-# jars
-
-<% if legacy_symlinks? %>
-install -d -m 0755 %{buildroot}%{_javadir}
-<% end %>
-
-<% [self, *modules].each_with_index do |modul, index| %>
-
-<% unless modul.pom.packaging == 'pom' %>
-%{__install} -Dm 644 %{SOURCE<%= index*10 + 0 %>} %{buildroot}<%= modul.install_path_for(:jar) %>
-
-<% if legacy_symlinks? %>
-%{__ln_s} <%= modul.install_path_for(:jar) %> %{buildroot}%{_javadir}/<%= modul.name %>.jar
-<% end %>
-
-<% end %>
-
-<% end %>
-
-
-# poms
-<% [self, *modules].each_with_index do |modul, index| %>
-%{__install} -Dpm 644 %{SOURCE<%= index*10 + 1 %>} %{buildroot}<%= modul.install_path_for(:pom) %>
-<% end %>
-
-%files
-%defattr(-,root,root,0755)
-%dir %{_datadir}/maven/repository
-%{_datadir}/maven/repository/*
-<% if legacy_symlinks? %>
-%{_javadir}/*
-<% end %>
-
-      }
-
+      template_path = File.join(File.dirname(__FILE__), 'templates', 'default.erb')
+      template = File.read(template_path)
+      puts template_path
       message = ERB.new(template, 0, "<>")
       message.result(binding)
     end

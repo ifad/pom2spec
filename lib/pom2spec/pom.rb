@@ -66,18 +66,22 @@ module Pom2spec
     # @param [IO] io pom file
     def initialize(io)
       @doc = Nokogiri::XML(io)
+      @doc.remove_namespaces!
+      # cache the key. Also throw early exceptions
+      # on invalid keys
+      @key = Pom::Key.new(group_id, artifact_id, version)
     end
 
     def key
-      Pom::Key.new(group_id, artifact_id, version)
+      @key
     end
 
     def parent
       return @parent if @parent
-      if not @doc.xpath("/xmlns:project/xmlns:parent").empty?
-        a = @doc.xpath("/xmlns:project/xmlns:parent/xmlns:artifactId").text.to_s
-        g = @doc.xpath("/xmlns:project/xmlns:parent/xmlns:groupId").text.to_s
-        v = @doc.xpath("/xmlns:project/xmlns:parent/xmlns:version").text.to_s
+      if not @doc.xpath("/project/parent").empty?
+        a = @doc.xpath("/project/parent/artifactId").text.to_s
+        g = @doc.xpath("/project/parent/groupId").text.to_s
+        v = @doc.xpath("/project/parent/version").text.to_s
         @parent = MavenSearch.pom_for(Pom::Key.new(g, a, v))
         return @parent
       end
@@ -86,13 +90,13 @@ module Pom2spec
 
     # @return [String] packaging for this project
     def packaging
-      node = @doc.xpath("/xmlns:project/xmlns:packaging")
+      node = @doc.xpath("/project/packaging")
       node.empty? ? 'jar' : node.text
     end
 
     def module_names
       return [] if packaging != 'pom'
-      @doc.xpath("/xmlns:project/xmlns:modules/xmlns:module").map(&:text)    
+      @doc.xpath("/project/modules/module").map(&:text)    
     end
 
     # @return [Array<Pom>] Modules for this project, if packaging is of pom type
@@ -109,7 +113,7 @@ module Pom2spec
 
     # @return [String] id for the artifact
     def artifact_id
-      @doc.xpath("/xmlns:project/xmlns:artifactId").text
+      @doc.xpath("/project/artifactId").text
     end 
 
     # @return [String] artifact's version
@@ -119,10 +123,11 @@ module Pom2spec
 
     # @return [String] license description
     def licenses
-      elements = @doc.xpath('/xmlns:project/xmlns:licenses//xmlns:name')
+      elements = @doc.xpath('/project/licenses//name')
       return elements.to_a.join(",") if not elements.empty?
-      parent_licenses = parent.licenses
-      return parent_licenses if parent_licenses
+      if parent
+        return parent.licenses if parent.licenses
+      end
       nil
     end
 
@@ -144,31 +149,31 @@ module Pom2spec
     # @return [String] attribute project/attrname
     # @visibility private
     def project_attribute(name)
-      value = @doc.xpath("/xmlns:project/xmlns:#{name}").first
+      value = @doc.xpath("/project/#{name}").first
       return expand_properties(value.text) if value
       return parent.project_attribute(name) if parent
       raise "Attribute #{name} not defined in project and no parent to ask for it"
     end
 
     def project_array_attribute(name)
-      elements = @doc.xpath("/xmlns:project/xmlns:#{name}").map(&:text)
+      elements = @doc.xpath("/project/#{name}").map(&:text)
       return parent.project_array_attribute(name) if parent
       raise "Attribute #{name} not defined in project and no parent to ask for it"
     end
 
     # return [Array<ArtifactIdentifier>] artifact dependencies
     def dependencies
-      @doc.xpath("/xmlns:project/xmlns:dependencies/xmlns:dependency").map do |dep|
-        Key.new(dep.xpath('./xmlns:groupId').text,
-                dep.xpath('./xmlns:artifactId').text,
-                expand_properties(dep.xpath('./xmlns:version').text))
+      @doc.xpath("/project/dependencies/dependency").map do |dep|
+        Key.new(dep.xpath('./groupId').text,
+                dep.xpath('./artifactId').text,
+                expand_properties(dep.xpath('./version').text))
       end
     end
 
     # @return [String] return property of given name. Looks in parent if
     #   not defined. 
     def property(name)
-      element = @doc.xpath("/xmlns:project/xmlns:properties/xmlns:#{name}")
+      element = @doc.xpath("/project/properties/#{name}")
       ret = nil
       if element
         return element.text.to_s

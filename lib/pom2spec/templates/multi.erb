@@ -1,0 +1,90 @@
+Name:     <%= name %>
+Version:  <%= version %>
+Release:  0
+License:  <%= license %>
+Url:      http://www.opensuse.org
+Group:    Development/Libraries/Java
+Summary:  <%= summary %>
+
+<% pkgs.each_with_index do |pkg, pkg_index| %>
+
+<% [pkg, *pkg.modules].each_with_index do |modul, mod_index| %>
+# <%= modul.name_with_suffix %>
+<% unless modul.pom.packaging == 'pom' %>
+Source<%= pkg_index*100 + mod_index*10 + 0 %>:  <%= modul.url_for(:jar, :version_macro => false) %>
+<% end %>
+Source<%= pkg_index*100 + mod_index*10 + 1 %>:  <%= modul.url_for(:pom, :version_macro => false) %>
+Source<%= pkg_index*100 + mod_index*10 + 2 %>:  <%= modul.metadata_source_filename %>
+<% end %>
+
+<% end  %>
+
+<% pkgs.each do |pkg| %>
+<% [pkg, *pkg.modules].each_with_index do |modul, index| %>
+# <%= modul.name_with_suffix %>
+%package -n <%= modul.name_with_suffix %>
+Summary: <%= modul.summary %>
+Url:     <%= modul.pom.url %>
+License: <%= modul.license %>
+<% if modul.name_with_suffix != modul.name %>
+Provides:  <%= modul.name %>
+<% end %>
+Provides: java(<%= modul.pom.key.to_s_without_version %>)
+<% modul.pom.dependencies.each do |dep| %>
+Requires: java(<%= dep.to_s_without_version %>)
+<% end %>
+	
+%description -n <%= modul.name_with_suffix %>
+<%= modul.description %>
+
+<% end %>
+
+<% end  %>
+
+%prep
+
+%build
+
+%install
+<% if legacy_symlinks? %>
+install -d -m 0755 %{buildroot}%{_javadir}
+<% end %>
+
+<% pkgs.each_with_index do |pkg, pkg_index| %>
+<% [pkg, *pkg.modules].each_with_index do |modul, mod_index| %>
+# <%= modul.name_with_suffix %>
+<% unless modul.pom.packaging == 'pom' %>
+# jars
+%{__install} -Dm 644 %{SOURCE<%= pkg_index*100 + mod_index*10 + 0 %>} %{buildroot}<%= modul.install_path_for(:jar) %>
+<% if legacy_symlinks? %>
+%{__ln_s} <%= modul.install_path_for(:jar) %> %{buildroot}%{_javadir}/<%= modul.name %>.jar
+<% end %>
+<% end %>
+
+# pom and metadata
+<% [pkg, *pkg.modules].each_with_index do |modul, index| %>
+%{__install} -Dpm 644 %{SOURCE<%= pkg_index*100 + mod_index*10 + 1 %>} %{buildroot}<%= modul.install_path_for(:pom) %>
+%{__install} -Dpm 644 %{SOURCE<%= pkg_index*100 + mod_index*10 + 2 %>} %{buildroot}<%= File.join(modul.artifacts_base_install_path, "maven-metadata-local.xml") %>
+<% end %>
+
+<% end %>
+
+<% end  %>
+
+<% pkgs.each_with_index do |pkg, pkg_index| %>
+<% [pkg, *pkg.modules].each_with_index do |modul, mod_index| %>
+
+%files -n <%= modul.name_with_suffix %>
+defattr(-,root,root,0755)
+%dir %{_datadir}/maven/repository
+<% if legacy_symlinks? %>
+%{_javadir}/<%= modul.name %>.jar
+<% end %>
+<% unless modul.pom.packaging == 'pom' %>
+<%= modul.install_path_for(:jar) %>
+<% end %>
+
+<%= modul.install_path_for(:pom) %>
+<% end %>
+
+<% end %>

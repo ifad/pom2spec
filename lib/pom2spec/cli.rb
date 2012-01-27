@@ -4,6 +4,7 @@ require 'pom2spec/logger'
 require 'pom2spec/maven_search'
 require 'pom2spec/pom'
 require 'pom2spec/spec_adapter'
+require 'pom2spec/multi_package_spec_adapter'
 require "rexml/document"
 require 'open-uri'
 
@@ -37,47 +38,49 @@ module Pom2spec
     option ['-d', '--download'], :flag, 'Download referenced sources'
     option ['--[no-]legacy-symlinks'], :flag, 'Add symlinks to /usr/share/java', :default => true
 
-    parameter "KEY", "artifact identifier (group:artifact-id[:version])"
+    parameter "KEY ...", "artifact identifiers (group:artifact-id[:version])"
     
     def execute
-      pom_key = Pom::Key.new(key)
-      meta = Pom2spec::MavenSearch.metadata_for(pom_key)
 
-      versions = meta.versions
+      adapters = []
 
-      if not pom_key.has_version?
-        log.info "#{key} : using version #{meta.newest_version}"
-      else
-        unless versions.include?(pom_key.version)
-          log.fatal("requested version #{version} is not in metadata")
-          log.info "call again and specify the exact version, one of:"
-          versions.map { |x| " - #{x}"}.each do |x|
-            log.info x
+      key_list.each do |key|
+
+        pom_key = Pom::Key.new(key)
+        meta = Pom2spec::MavenSearch.metadata_for(pom_key)
+
+        versions = meta.versions
+
+        if not pom_key.has_version?
+          log.info "#{key} : using version #{meta.newest_version}"
+        else
+          unless versions.include?(pom_key.version)
+            log.fatal("requested version #{version} is not in metadata")
+            log.info "call again and specify the exact version, one of:"
+            versions.map { |x| " - #{x}"}.each do |x|
+              log.info x
+            end
+            exit(1)
           end
-          exit(1)
         end
-      end
-      pom = Pom2spec::MavenSearch.pom_for(pom_key)
+        pom = Pom2spec::MavenSearch.pom_for(pom_key)
 
-      adapter = Pom2spec::SpecAdapter.new(pom)
+        adapter = Pom2spec::SpecAdapter.new(pom)
 
-      if binary? && bootstrap?
-        log.warn "binary can't be used together with bootstrap"
-        return 1
-      end
+        adapter.binary = binary? || bootstrap?
+        adapter.name_suffix = '-bootstrap' if bootstrap?
 
-      adapter.binary = binary?
-      adapter.legacy_symlinks = legacy_symlinks?
+        adapter.legacy_symlinks = legacy_symlinks?
 
-      filename = "#{adapter.name_with_suffix}.spec"
-      log.info "Writing #{filename}"
-
-      File.open(filename, "w") do |f|
-        f << adapter.to_spec
+        adapters << adapter
       end
 
-      log.info "Done"
-
+      target = case 
+        when adapters.size > 1 then MultiPackageSpecAdapter.new(adapters)
+        else adapters.first
+      end
+      target.write_files(Dir.pwd)
+      
       if download?
         system("/usr/lib/build/spectool --source --download *.spec")
       end

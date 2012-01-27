@@ -46,7 +46,7 @@ module Pom2spec
     def initialize(pom, opts={})
       @pom = pom
       
-      opts[:binary] ||= false
+      #opts[:binary] ||= false
       @binary = opts[:binary]
     end
 
@@ -88,21 +88,65 @@ module Pom2spec
       pom.description
     end
 
-    def url_for(fmt)
-      pom.url_for(fmt).gsub(/#{pom.version}/, "%{version}")
+    def url_for(fmt, opts={})
+      opts = {:version_macro => true}.merge(opts)
+      
+      ret = pom.url_for(fmt)
+      ret = ret.gsub(/#{pom.version}/, "%{version}") if opts[:version_macro]
+      ret
+    end
+
+    def metadata_source_filename
+      "#{pom.group_id}-#{pom.artifact_id}-metadata.xml"
+    end
+
+    def artifacts_base_install_path
+      LOCAL_MAVEN_REPOSITORY + File.join([*pom.group_id.split('.'), pom.artifact_id])
     end
 
     def install_path_for(fmt)
-      LOCAL_MAVEN_REPOSITORY + File.join([*pom.group_id.split('.'), pom.artifact_id, File.basename(URI.parse(pom.url_for(fmt)).path)])
+      File.join([artifacts_base_install_path, pom.version, File.basename(URI.parse(pom.url_for(fmt)).path)])
     end
 
     def to_spec
-
       template_path = File.join(File.dirname(__FILE__), 'templates', 'default.erb')
       template = File.read(template_path)
-      puts template_path
       message = ERB.new(template, 0, "<>")
       message.result(binding)
+    end
+
+    def to_maven_metadata
+      template_path = File.join(File.dirname(__FILE__), 'templates', 'maven-metadata.xml.erb')
+      template = File.read(template_path)
+      message = ERB.new(template, 0, "<>")
+      message.result(binding)
+    end
+
+    def write_spec_file(path)
+      filename = File.join(path, "#{name_with_suffix}.spec")
+      Pom2spec.logger.info "Writing #{filename}"
+
+      File.open(filename, "w") do |f|
+        f << to_spec
+      end
+      Pom2spec.logger.info "Done"
+    end
+
+    def write_metadata_files(path)
+      [self, *self.modules].each do |mod|
+        filename = mod.metadata_source_filename
+        Pom2spec.logger.info "Writing #{filename}"
+
+        File.open(filename, "w") do |f|
+          f << mod.to_maven_metadata
+        end
+        Pom2spec.logger.info "Done"
+      end
+    end
+
+    def write_files(path)
+      write_spec_file(path)
+      write_metadata_files(path)      
     end
 
   end

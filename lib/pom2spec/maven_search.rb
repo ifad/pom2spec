@@ -26,7 +26,7 @@ module Pom2spec
       begin 
         return Pom.open(url)
       rescue
-        Pom2spec.logger.error "Can't download #{fmt} for #{key} at '#{url}'"
+        Pom2spec.logger.error "Can't download pom for #{key} at '#{url}'"
         exit(1)
       end
     end

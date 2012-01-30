@@ -1,10 +1,12 @@
-Name:     <%= name %>
+Name:     <%= name_with_suffix %>
 Version:  <%= version %>
 Release:  0
 License:  <%= license %>
 Url:      http://www.opensuse.org
 Group:    Development/Libraries/Java
 Summary:  <%= summary %>
+Requires:       java >= 1.6.0
+BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 <% pkgs.each_with_index do |pkg, pkg_index| %>
 
@@ -18,6 +20,9 @@ Source<%= pkg_index*100 + mod_index*10 + 2 %>:  <%= modul.metadata_source_filena
 <% end %>
 
 <% end  %>
+
+%description
+<%= description %>
 
 <% pkgs.each do |pkg| %>
 <% [pkg, *pkg.modules].each_with_index do |modul, index| %>
@@ -75,15 +80,15 @@ install -d -m 0755 %{buildroot}%{_javadir}
 <% [pkg, *pkg.modules].each_with_index do |modul, mod_index| %>
 
 %files -n <%= modul.name_with_suffix %>
-defattr(-,root,root,0755)
+%defattr(-,root,root,0755)
 %dir %{_datadir}/maven/repository
+<% unless modul.pom.packaging == 'pom' %>
+<%= modul.install_path_for(:jar) %>
 <% if legacy_symlinks? %>
 %{_javadir}/<%= modul.name %>.jar
 <% end %>
-<% unless modul.pom.packaging == 'pom' %>
-<%= modul.install_path_for(:jar) %>
 <% end %>
-
+	
 <%= modul.install_path_for(:pom) %>
 <% end %>
 

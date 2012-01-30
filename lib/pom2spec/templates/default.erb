@@ -5,10 +5,12 @@ License:  <%= license %>
 Url:      <%= pom.url %>
 Group:    Development/Libraries/Java
 Summary:  <%= summary %>
+Requires:       java >= 1.6.0
+BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 <% [self, *modules].each_with_index do |modul, index| %>
 # <%= modul.name_with_suffix %>
-Provides: java(<%= pom.key.to_s_without_version %>)
+Provides: java(<%= modul.pom.key.to_s_without_version %>)
 
 <% unless modul.pom.packaging == 'pom' %>
 Source<%= index*10 + 0 %>:  <%= modul.url_for(:jar) %>

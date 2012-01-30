@@ -133,12 +133,12 @@ module Pom2spec
 
     # @return [String] project's url
     def url
-      project_attribute("url")
+      project_attribute("url") rescue "http://fixme"
     end
 
     # @return [String] artifact description
     def description
-      project_attribute("description")
+      project_attribute("description") rescue "No description available"
     end
 
     # @return [String] artifact name
@@ -152,13 +152,13 @@ module Pom2spec
       value = @doc.xpath("/project/#{name}").first
       return expand_properties(value.text) if value
       return parent.project_attribute(name) if parent
-      raise "Attribute #{name} not defined in project and no parent to ask for it"
+      raise "#{key}: Attribute #{name} not defined in project and no parent to ask for it"
     end
 
     def project_array_attribute(name)
       elements = @doc.xpath("/project/#{name}").map(&:text)
       return parent.project_array_attribute(name) if parent
-      raise "Attribute #{name} not defined in project and no parent to ask for it"
+      raise "#{key}: Attribute #{name} not defined in project and no parent to ask for it"
     end
 
     # return [Array<ArtifactIdentifier>] artifact dependencies

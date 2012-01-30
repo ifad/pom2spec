@@ -37,6 +37,7 @@ module Pom2spec
 
     option ['-d', '--download'], :flag, 'Download referenced sources'
     option ['--[no-]legacy-symlinks'], :flag, 'Add symlinks to /usr/share/java', :default => true
+    option ['-n', '--package-name'], 'NAME', 'name for the package. Only used for multiple artifacts', :default => nil
 
     parameter "KEY ...", "artifact identifiers (group:artifact-id[:version])"
     
@@ -55,12 +56,11 @@ module Pom2spec
           log.info "#{key} : using version #{meta.newest_version}"
         else
           unless versions.include?(pom_key.version)
-            log.fatal("requested version #{version} is not in metadata")
-            log.info "call again and specify the exact version, one of:"
+            log.warn("requested version #{pom_key.version} is not in metadata")
+            log.warn "Server reports available versions:"
             versions.map { |x| " - #{x}"}.each do |x|
-              log.info x
+              log.warn x
             end
-            exit(1)
           end
         end
         pom = Pom2spec::MavenSearch.pom_for(pom_key)
@@ -79,6 +79,11 @@ module Pom2spec
         when adapters.size > 1 then MultiPackageSpecAdapter.new(adapters)
         else adapters.first
       end
+
+      if package_name
+        target.name = package_name
+      end
+
       target.write_files(Dir.pwd)
       
       if download?

@@ -16,6 +16,16 @@ module Pom2spec
       @name ? @name : "example"
     end
 
+    def name_suffix
+      @pkgs.map(&:name_suffix).select do |x|
+        x
+      end.first
+    end
+
+    def name_with_suffix
+      "#{name}#{name_suffix}"
+    end
+
     def version
       "0.1"
     end
@@ -29,7 +39,7 @@ module Pom2spec
     end
 
     def description
-      "Bootstrap package for #{poms.map(&:name).join(", ")}"
+      "Bootstrap package for #{pkgs.map(&:name).join(", ")}"
     end
 
     # @return True 
@@ -46,7 +56,7 @@ module Pom2spec
     end
 
     def write_spec_file(path)
-      filename = File.join(path, "#{name}.spec")
+      filename = File.join(path, "#{name_with_suffix}.spec")
       Pom2spec.logger.info "Writing #{filename}"
 
       File.open(filename, "w") do |f|

@@ -63,6 +63,18 @@ module Pom2spec
       "#{name}#{name_suffix}"
     end
 
+    def version
+      pom.version
+    end
+
+    def url
+      pom.url
+    end
+
+    def group
+      "Development/Languages/Java"
+    end
+
     def license
       orig = pom.licenses
       if @@license_table.has_key?(orig)

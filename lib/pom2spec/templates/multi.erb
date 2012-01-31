@@ -1,12 +1,12 @@
-Name:     <%= name_with_suffix %>
-Version:  <%= version %>
-Release:  0
-License:  <%= license %>
-Url:      http://www.opensuse.org
-Group:    Development/Libraries/Java
-Summary:  <%= summary %>
-Requires:       java >= 1.6.0
-BuildRoot:      %{_tmppath}/%{name}-%{version}-build
+Name:     	<%= name_with_suffix %>
+Version:  	<%= version %>
+Release:  	0
+License:  	<%= license %>
+Url:      	<%= url %>
+Group:    	<%= group %>
+Summary:  	<%= summary %>
+Requires:   java >= 1.6.0
+BuildRoot:  %{_tmppath}/%{name}-%{version}-build
 
 <% pkgs.each_with_index do |pkg, pkg_index| %>
 
@@ -84,12 +84,15 @@ install -d -m 0755 %{buildroot}%{_javadir}
 %dir %{_datadir}/maven/repository
 <% unless modul.pom.packaging == 'pom' %>
 <%= modul.install_path_for(:jar) %>
+
 <% if legacy_symlinks? %>
 %{_javadir}/<%= modul.name %>.jar
 <% end %>
 <% end %>
-	
+
 <%= modul.install_path_for(:pom) %>
+
+<%= File.join(modul.artifacts_base_install_path, "maven-metadata-local.xml") %>
 <% end %>
 
 <% end %>

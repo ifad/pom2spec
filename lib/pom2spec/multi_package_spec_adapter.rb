@@ -16,6 +16,14 @@ module Pom2spec
       @name ? @name : "example"
     end
 
+    def version
+      "0.1"
+    end
+
+    def group
+      "Development/Libraries/Java"
+    end
+
     def name_suffix
       @pkgs.map(&:name_suffix).select do |x|
         x
@@ -26,8 +34,8 @@ module Pom2spec
       "#{name}#{name_suffix}"
     end
 
-    def version
-      "0.1"
+    def url
+      "http://www.opensuse.org"
     end
 
     def license

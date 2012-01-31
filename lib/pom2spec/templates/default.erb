@@ -1,12 +1,12 @@
-Name:     <%= name_with_suffix %>
-Version:  <%= pom.version %>
-Release:  0
-License:  <%= license %>
-Url:      <%= pom.url %>
-Group:    Development/Libraries/Java
-Summary:  <%= summary %>
-Requires:       java >= 1.6.0
-BuildRoot:      %{_tmppath}/%{name}-%{version}-build
+Name:     	<%= name_with_suffix %>
+Version:  	<%= version %>
+Release:  	0
+License:  	<%= license %>
+Url:	    <%= url %>
+Group:    	<%= group %>
+Summary:  	<%= summary %>
+Requires:   java >= 1.6.0
+BuildRoot:  %{_tmppath}/%{name}-%{version}-build
 
 <% [self, *modules].each_with_index do |modul, index| %>
 # <%= modul.name_with_suffix %>

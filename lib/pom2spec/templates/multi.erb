@@ -6,6 +6,7 @@ Url:      	<%= url %>
 Group:    	<%= group %>
 Summary:  	<%= summary %>
 Requires:   java >= 1.6.0
+BuildArch:  noarch
 BuildRoot:  %{_tmppath}/%{name}-%{version}-build
 
 <% pkgs.each_with_index do |pkg, pkg_index| %>
@@ -28,9 +29,10 @@ Source<%= pkg_index*100 + mod_index*10 + 2 %>:  <%= modul.metadata_source_filena
 <% [pkg, *pkg.modules].each_with_index do |modul, index| %>
 # <%= modul.name_with_suffix %>
 %package -n <%= modul.name_with_suffix %>
-Summary: <%= modul.summary %>
-Url:     <%= modul.pom.url %>
-License: <%= modul.license %>
+Summary: 	<%= modul.summary %>
+Url:     	<%= modul.pom.url %>
+License: 	<%= modul.license %>
+Group:   	<%= modul.group %>
 <% if modul.name_with_suffix != modul.name %>
 Provides:  <%= modul.name %>
 <% end %>
@@ -81,6 +83,9 @@ install -d -m 0755 %{buildroot}%{_javadir}
 
 %files -n <%= modul.name_with_suffix %>
 %defattr(-,root,root,0755)
+<% if modul.bootstrap? %>
+%dir %{_datadir}/maven
+<% end %>
 %dir %{_datadir}/maven/repository
 <% unless modul.pom.packaging == 'pom' %>
 <%= modul.install_path_for(:jar) %>
@@ -96,3 +101,4 @@ install -d -m 0755 %{buildroot}%{_javadir}
 <% end %>
 
 <% end %>
+%changelog

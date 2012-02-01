@@ -12,10 +12,6 @@ module Pom2spec
 
     attr_writer :name
 
-    # If set, BuildRequires will not be
-    # added to the spec file
-    attr_writer :binary
-
     # @return True is the spec will not build
     # from source.
     #
@@ -24,6 +20,11 @@ module Pom2spec
     def binary?
       @binary
     end
+
+    def bootstrap?
+      @bootstrap
+    end
+
 
     # @return True 
     # information
@@ -46,8 +47,11 @@ module Pom2spec
     def initialize(pom, opts={})
       @pom = pom
       
+      opts = {:binary => false, :bootstrap => :false}.merge(opts)
+
       #opts[:binary] ||= false
-      @binary = opts[:binary]
+      @binary = opts[:binary] || opts[:bootstrap]
+      @bootstrap = opts[:bootstrap]
     end
 
     def name
@@ -56,6 +60,7 @@ module Pom2spec
 
     def name_suffix
       return @name_suffix if @name_suffix
+      return '-bootstrap' if bootstrap?
       return '-bin' if binary?
     end
 
@@ -77,6 +82,7 @@ module Pom2spec
 
     def license
       orig = pom.licenses
+      return "FIXME" if not orig
       if @@license_table.has_key?(orig)
         return @@license_table[orig]
       end

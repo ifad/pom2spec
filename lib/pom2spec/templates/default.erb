@@ -6,6 +6,7 @@ Url:	    <%= url %>
 Group:    	<%= group %>
 Summary:  	<%= summary %>
 Requires:   java >= 1.6.0
+BuildArch:  noarch
 BuildRoot:  %{_tmppath}/%{name}-%{version}-build
 
 <% [self, *modules].each_with_index do |modul, index| %>
@@ -75,8 +76,13 @@ install -d -m 0755 %{buildroot}%{_javadir}
 
 %files
 %defattr(-,root,root,0755)
+<% if bootstrap? %>
+%dir %{_datadir}/maven
+<% end %>
 %dir %{_datadir}/maven/repository
 %{_datadir}/maven/repository/*
 <% if legacy_symlinks? %>
 %{_javadir}/*
 <% end %>
+
+%changelog

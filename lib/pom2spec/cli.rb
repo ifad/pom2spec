@@ -65,10 +65,7 @@ module Pom2spec
         end
         pom = Pom2spec::MavenSearch.pom_for(pom_key)
 
-        adapter = Pom2spec::SpecAdapter.new(pom)
-
-        adapter.binary = binary? || bootstrap?
-        adapter.name_suffix = '-bootstrap' if bootstrap?
+        adapter = Pom2spec::SpecAdapter.new(pom, :binary => binary?, :bootstrap => bootstrap?)
 
         adapter.legacy_symlinks = legacy_symlinks?
 
@@ -76,7 +73,7 @@ module Pom2spec
       end
 
       target = case 
-        when adapters.size > 1 then MultiPackageSpecAdapter.new(adapters)
+        when adapters.size > 1 then MultiPackageSpecAdapter.new(adapters, :binary => binary?, :bootstrap => bootstrap?)
         else adapters.first
       end
 

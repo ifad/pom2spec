@@ -9,6 +9,11 @@ module Pom2spec
     attr_accessor :pkgs
 
     def initialize(pkgs, opts={})
+      opts = {:binary => false, :bootstrap => :false}.merge(opts)
+
+      @binary = opts[:binary] || opts[:bootstrap]
+      @bootstrap = opts[:bootstrap]
+
       @pkgs = pkgs
     end
 
@@ -28,6 +33,14 @@ module Pom2spec
       @pkgs.map(&:name_suffix).select do |x|
         x
       end.first
+    end
+
+    def binary?
+      @binary
+    end
+
+    def bootstrap?
+      @bootstrap
     end
 
     def name_with_suffix

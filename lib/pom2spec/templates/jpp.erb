@@ -1,29 +1,23 @@
-Name:     	<%= name_with_suffix %>
-Version:  	<%= version %>
-Release:  	0
-License:  	<%= license %>
-Url:	    <%= url %>
-Group:    	<%= group %>
-Summary:  	<%= summary %>
-Requires:   java >= 1.6.0
-BuildArch:  noarch
-BuildRoot:  %{_tmppath}/%{name}-%{version}-build
+Name:     	    <%= name_with_suffix %>
+Version:  	    <%= version %>
+Release:  	    0
+License:  	    <%= license %>
+Url:	        <%= url %>
+Group:    	    <%= group %>
+Summary:  	    <%= summary %>
+Requires:       java >= 1.6.0
+BuildRequires:  jpackage-utils 
+BuildArch:      noarch
+BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 
 <% [self, *modules].each_with_index do |modul, index| %>
 # <%= modul.name_with_suffix %>
-<% if jpp? %>
 Provides: mvn(<%= modul.pom.key.to_s_without_version %>)
-<% end %>
-<% if fmvn? %>
-Provides: fmvn(<%= modul.pom.key.to_s_without_version %>)
-<% end %>
+
 <% unless modul.pom.packaging == 'pom' %>
 Source<%= index*10 + 0 %>:  <%= modul.url_for(:jar) %>
 <% end %>
 Source<%= index*10 + 1 %>:  <%= modul.url_for(:pom) %>
-<% if fmvn? %>
-Source<%= index*10 + 2 %>:  <%= modul.fmvn_metadata_source_filename %>
-<% end %>
 <% end %>
 
 <% if name_with_suffix != name %>
@@ -32,11 +26,11 @@ Provides:  <%= name %>
 
 <% unless binary? %>
 <% pom.dependencies.each do |dep| %>
-BuildRequires: java(<%= dep.to_s_without_version %>)
+BuildRequires: mvn(<%= dep.to_s_without_version %>)
 <% end %>
 <% end %>
 <% pom.dependencies.each do |dep| %>
-Requires: java(<%= dep.to_s_without_version %>)
+Requires: mvn(<%= dep.to_s_without_version %>)
 <% end %>
 
 <% modules.each do |modul| %>
@@ -45,7 +39,7 @@ Requires: java(<%= dep.to_s_without_version %>)
 Provides:  <%= modul.name %>
 <% end %>
 <% modul.pom.dependencies.each do |dep| %>
-Requires: java(<%= dep.to_s_without_version %>)
+Requires: mvn(<%= dep.to_s_without_version %>)
 <% end %>
 <% end %>
 
@@ -73,8 +67,10 @@ install -d -m 0755 %{buildroot}%{_javadir}
 # pom and metadata
 <% [self, *modules].each_with_index do |modul, index| %>
 %{__install} -Dpm 644 %{SOURCE<%= index*10 + 1 %>} %{buildroot}<%= modul.install_path_for(:pom) %>
-<% if fmvn? %>
-%{__install} -Dpm 644 %{SOURCE<%= index*10 + 2 %>} %{buildroot}<%= File.join(modul.fmvn_artifacts_base_install_path, "maven-metadata-local.xml") %>
+<% if modul.pom.packaging == 'pom' %>
+%add_maven_depmap <%= File.basename(install_path_for(:pom)) %>
+<% else %>
+%add_maven_depmap <%= File.basename(install_path_for(:pom)) %> <%= File.basename(install_path_for(:jar)) %>
 <% end %>
 <% end %>
 
@@ -84,13 +80,15 @@ install -d -m 0755 %{buildroot}%{_javadir}
 
 %files
 %defattr(-,root,root,0755)
-<% if bootstrap? %>
+<% if fmvn? %>
 %dir %{_datadir}/maven
-<% end %>
 %dir %{_datadir}/maven/repository
 %{_datadir}/maven/repository/*
-<% if legacy_symlinks? %>
+<% end %>
 %{_javadir}/*
+<% if jpp? %>
+%{_mavenpomdir}/*
+%{_mavendepmapfragdir}/*
 <% end %>
 
 %changelog

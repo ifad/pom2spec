@@ -13,7 +13,8 @@ BuildRoot:  %{_tmppath}/%{name}-%{version}-build
 
 <% [pkg, *pkg.modules].each_with_index do |modul, mod_index| %>
 # <%= modul.name_with_suffix %>
-<% unless modul.pom.packaging == 'pom' %>
+<%= modul.pom.build_plugins.join(",") %>
+<% unless modul.pom.packaging == 'pom' || !binary? %>
 Source<%= pkg_index*100 + mod_index*10 + 0 %>:  <%= modul.url_for(:jar, :version_macro => false) %>
 <% end %>
 Source<%= pkg_index*100 + mod_index*10 + 1 %>:  <%= modul.url_for(:pom, :version_macro => false) %>
@@ -36,9 +37,9 @@ Group:   	<%= modul.group %>
 <% if modul.name_with_suffix != modul.name %>
 Provides:  <%= modul.name %>
 <% end %>
-Provides: java(<%= modul.pom.key.to_s_without_version %>)
+Provides: fmvn(<%= modul.pom.key.to_s_without_version %>)
 <% modul.pom.dependencies.each do |dep| %>
-Requires: java(<%= dep.to_s_without_version %>)
+Requires: fmvn(<%= dep.to_s_without_version %>)
 <% end %>
 	
 %description -n <%= modul.name_with_suffix %>
@@ -83,21 +84,21 @@ install -d -m 0755 %{buildroot}%{_javadir}
 
 %files -n <%= modul.name_with_suffix %>
 %defattr(-,root,root,0755)
-<% if modul.bootstrap? %>
-%dir %{_datadir}/maven
+<% modul.owned_directories.each do |directory| %>
+%dir <%= directory %>
 <% end %>
-%dir %{_datadir}/maven/repository
 <% unless modul.pom.packaging == 'pom' %>
 <%= modul.install_path_for(:jar) %>
 
 <% if legacy_symlinks? %>
 %{_javadir}/<%= modul.name %>.jar
-<% end %>
-<% end %>
 
+<% end %>
+<% end %>
 <%= modul.install_path_for(:pom) %>
 
 <%= File.join(modul.artifacts_base_install_path, "maven-metadata-local.xml") %>
+
 <% end %>
 
 <% end %>

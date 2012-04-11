@@ -6,9 +6,7 @@ module Pom2spec
   class SpecAdapter
 
     LICENSE_FIX_FILE_URL = 'https://github.com/openSUSE/obs-service-format_spec_file/blob/master/licenses_changes.txt'
-    FMVN_LOCAL_MAVEN_REPOSITORY = '%{_datadir}/maven/repository'
-    JAVADIR = '%{_javadir}'
-    POMDIR = '%{_mavenpomdir}'
+    LOCAL_MAVEN_REPOSITORY = '%{_datadir}/maven/repository'
 
     attr_reader :pom
 
@@ -27,13 +25,6 @@ module Pom2spec
       @bootstrap
     end
 
-    def fmvn?
-      @fmvn
-    end
-
-    def jpp?
-      @jpp
-    end
 
     # @return True 
     # information
@@ -84,7 +75,7 @@ module Pom2spec
     end
 
     def url
-      pom.url.strip
+      pom.url
     end
 
     def group
@@ -103,7 +94,7 @@ module Pom2spec
     def modules
       if not @modules
         @modules = pom.modules.map do |m|
-          SpecAdapter.new(m, :binary => binary?, :jpp => jpp?, :fmvn => fmvn?)
+          SpecAdapter.new(m, :binary => binary?)
         end
       end
       @modules
@@ -125,33 +116,16 @@ module Pom2spec
       ret
     end
 
-    def fmvn_metadata_source_filename
+    def metadata_source_filename
       "#{pom.group_id}-#{pom.artifact_id}-metadata.xml"
     end
 
-    def fmvn_artifacts_base_install_path
-      FMVN_LOCAL_MAVEN_REPOSITORY + "/" + File.join([*pom.group_id.split('.'), pom.artifact_id])
-    end
-
-    def fmvn_install_path_for(fmt)
-      File.join([fmvn_artifacts_base_install_path, pom.version, File.basename(URI.parse(pom.url_for(fmt)).path)])
+    def artifacts_base_install_path
+      LOCAL_MAVEN_REPOSITORY + "/" + File.join([*pom.group_id.split('.'), pom.artifact_id])
     end
 
     def install_path_for(fmt)
-      case fmt
-      when :jar then File.join(JAVADIR, "#{name}.jar")
-      when :pom then File.join(POMDIR, "JPP-#{name}.pom")
-      else raise "Unknown format #{fmt}"
-      end
-    end
-
-    def symlinks
-      links = []
-      if fmvn?
-        links << [install_path_for(:jar), fmvn_install_path_for(:jar)]
-        links << [install_path_for(:pom), fmvn_install_path_for(:pom) ]
-      end
-      links
+      File.join([artifacts_base_install_path, pom.version, File.basename(URI.parse(pom.url_for(fmt)).path)])
     end
 
     def owned_directories
@@ -167,12 +141,7 @@ module Pom2spec
     end
 
     def to_spec
-      template = case
-        when jpp? then 'jpp.erb'
-        when fmvn? then 'fmvn.erb'
-        else raise "Select either jpp or fmvn"
-      end
-      template_path = File.join(File.dirname(__FILE__), 'templates', 'jpp.erb')
+      template_path = File.join(File.dirname(__FILE__), 'templates', 'default.erb')
       template = File.read(template_path)
       message = ERB.new(template, 0, "<>")
       message.result(binding)
@@ -196,16 +165,14 @@ module Pom2spec
     end
 
     def write_metadata_files(path)
-      if fmvn?
-        [self, *self.modules].each do |mod|
-          filename = mod.fmvn_metadata_source_filename
-          Pom2spec.logger.info "Writing #{filename}"
+      [self, *self.modules].each do |mod|
+        filename = mod.metadata_source_filename
+        Pom2spec.logger.info "Writing #{filename}"
 
-          File.open(filename, "w") do |f|
-            f << mod.to_maven_metadata
-          end
-          Pom2spec.logger.info "Done"
+        File.open(filename, "w") do |f|
+          f << mod.to_maven_metadata
         end
+        Pom2spec.logger.info "Done"
       end
     end
 

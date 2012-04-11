@@ -35,6 +35,9 @@ module Pom2spec
     option ['-b', '--binary'], :flag, "Creates a binary package (sets suffix to -bin)"
     option ['-s', '--bootstrap'], :flag, "Creates a bootstrap package. Like binary but with -bootstrap suffix."    
 
+    option ['-j', '--jpp'], :flag, "Adds metadata for jpp repositories"    
+    option ['-f', '--fmvn'], :flag, "Adds metadata for fmvn repositories"    
+
     option ['-d', '--download'], :flag, 'Download referenced sources'
     option ['--[no-]legacy-symlinks'], :flag, 'Add symlinks to /usr/share/java', :default => true
     option ['-n', '--package-name'], 'NAME', 'name for the package. Only used for multiple artifacts', :default => nil
@@ -48,24 +51,36 @@ module Pom2spec
       key_list.each do |key|
 
         pom_key = Pom::Key.new(key)
-        meta = Pom2spec::MavenSearch.metadata_for(pom_key)
 
-        versions = meta.versions
+        begin
+          meta = Pom2spec::MavenSearch.metadata_for(pom_key)
 
-        if not pom_key.has_version?
-          log.info "#{key} : using version #{meta.newest_version}"
-        else
-          unless versions.include?(pom_key.version)
-            log.warn("requested version #{pom_key.version} is not in metadata")
-            log.warn "Server reports available versions:"
-            versions.map { |x| " - #{x}"}.each do |x|
-              log.warn x
+          versions = meta.versions
+
+          if not pom_key.has_version?
+            log.info "#{key} : using version #{meta.newest_version}"
+          else
+            unless versions.include?(pom_key.version)
+              log.warn("requested version #{pom_key.version} is not in metadata")
+              log.warn "Server reports available versions:"
+              versions.map { |x| " - #{x}"}.each do |x|
+                log.warn x
+              end
             end
+          end
+        rescue Exception => e
+          if pom_key.has_version?
+            log.warn e.message
+          else
+            log.error e.message
+            log.error "... and version not specified. Please specify version."
+            return 1
           end
         end
         pom = Pom2spec::MavenSearch.pom_for(pom_key)
 
-        adapter = Pom2spec::SpecAdapter.new(pom, :binary => binary?, :bootstrap => bootstrap?)
+        adapter = Pom2spec::SpecAdapter.new(pom, :binary => binary?,
+          :bootstrap => bootstrap?, :jpp => jpp?, :fmvn => fmvn?)
 
         adapter.legacy_symlinks = legacy_symlinks?
 
@@ -73,7 +88,8 @@ module Pom2spec
       end
 
       target = case 
-        when adapters.size > 1 then MultiPackageSpecAdapter.new(adapters, :binary => binary?, :bootstrap => bootstrap?)
+        when adapters.size > 1 then MultiPackageSpecAdapter.new(adapters,
+          :binary => binary?, :bootstrap => bootstrap?, :jpp => jpp?, :fmvn => fmvn?)
         else adapters.first
       end
 

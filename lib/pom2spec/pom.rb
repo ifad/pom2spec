@@ -170,6 +170,15 @@ module Pom2spec
       end
     end
 
+    # return [Array<ArtifactIdentifier>] artifact build plugins
+    def build_plugins
+      @doc.xpath("/project/build/plugins/plugin").map do |dep|
+        Key.new(dep.xpath('./groupId').text,
+                dep.xpath('./artifactId').text,
+                expand_properties(dep.xpath('./version').text))
+      end
+    end    
+
     # @return [String] return property of given name. Looks in parent if
     #   not defined. 
     def property(name)

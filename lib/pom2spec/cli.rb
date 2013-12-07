@@ -33,10 +33,10 @@ module Pom2spec
   class GenerateCommand < Pom2spec::CommandBase
 
     option ['-b', '--binary'], :flag, "Creates a binary package (sets suffix to -bin)"
-    option ['-s', '--bootstrap'], :flag, "Creates a bootstrap package. Like binary but with -bootstrap suffix."    
+    option ['-s', '--bootstrap'], :flag, "Creates a bootstrap package. Like binary but with -bootstrap suffix."
 
-    option ['-j', '--jpp'], :flag, "Adds metadata for jpp repositories"    
-    option ['-f', '--fmvn'], :flag, "Adds metadata for fmvn repositories"    
+    option ['-j', '--jpp'], :flag, "Adds metadata for jpp repositories"
+    option ['-f', '--fmvn'], :flag, "Adds metadata for fmvn repositories"
 
     option ['-d', '--download'], :flag, 'Download referenced sources'
     option ['--[no-]legacy-symlinks'], :flag, 'Add symlinks to /usr/share/java', :default => true
@@ -44,7 +44,7 @@ module Pom2spec
     option ['-p', '--pom-file'], 'POMFILE', 'pom.xml local path. Will skip search on maven repo.', :default => nil
 
     parameter "KEY ...", "artifact identifiers (group:artifact-id[:version])"
-    
+
     def execute
 
       unless jpp? or fmvn?
@@ -59,31 +59,31 @@ module Pom2spec
         pom_key = Pom::Key.new(key)
 
         unless pom_file
-        begin
-          meta = Pom2spec::MavenSearch.metadata_for(pom_key)
+          begin
+            meta = Pom2spec::MavenSearch.metadata_for(pom_key)
 
-          versions = meta.versions
+            versions = meta.versions
 
-          if not pom_key.has_version?
-            log.info "#{key} : using version #{meta.newest_version}"
-          else
-            unless versions.include?(pom_key.version)
-              log.warn("requested version #{pom_key.version} is not in metadata")
-              log.warn "Server reports available versions:"
-              versions.map { |x| " - #{x}"}.each do |x|
-                log.warn x
+            if not pom_key.has_version?
+              log.info "#{key} : using version #{meta.newest_version}"
+            else
+              unless versions.include?(pom_key.version)
+                log.warn("requested version #{pom_key.version} is not in metadata")
+                log.warn "Server reports available versions:"
+                versions.map { |x| " - #{x}"}.each do |x|
+                  log.warn x
+                end
               end
             end
+          rescue Exception => e
+            if pom_key.has_version?
+              log.warn e.message
+            else
+              log.error e.message
+              log.error "... and version not specified. Please specify version."
+              return 1
+            end
           end
-        rescue Exception => e
-          if pom_key.has_version?
-            log.warn e.message
-          else
-            log.error e.message
-            log.error "... and version not specified. Please specify version."
-            return 1
-          end
-        end
         end
 
         pom = Pom2spec::MavenSearch.pom_for(pom_key, pom_file)
@@ -107,7 +107,7 @@ module Pom2spec
       end
 
       target.write_files(Dir.pwd)
-      
+
       if download?
         system("/usr/lib/build/spectool --source --download *.spec")
       end

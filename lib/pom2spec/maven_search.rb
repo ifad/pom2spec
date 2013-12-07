@@ -21,8 +21,8 @@ module Pom2spec
       end
     end
 
-    def self.pom_for(key)
-      url = artifact_url_for(key, 'pom')
+    def self.pom_for(key, url = nil)
+      url ||= artifact_url_for(key, 'pom')
       begin 
         return Pom.open(url)
       rescue

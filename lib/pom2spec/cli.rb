@@ -41,6 +41,7 @@ module Pom2spec
     option ['-d', '--download'], :flag, 'Download referenced sources'
     option ['--[no-]legacy-symlinks'], :flag, 'Add symlinks to /usr/share/java', :default => true
     option ['-n', '--package-name'], 'NAME', 'name for the package. Only used for multiple artifacts', :default => nil
+    option ['-p', '--pom-file'], 'POMFILE', 'pom.xml local path. Will skip search on maven repo.', :default => nil
 
     parameter "KEY ...", "artifact identifiers (group:artifact-id[:version])"
     
@@ -52,6 +53,7 @@ module Pom2spec
 
         pom_key = Pom::Key.new(key)
 
+        unless pom_file
         begin
           meta = Pom2spec::MavenSearch.metadata_for(pom_key)
 
@@ -77,7 +79,9 @@ module Pom2spec
             return 1
           end
         end
-        pom = Pom2spec::MavenSearch.pom_for(pom_key)
+        end
+
+        pom = Pom2spec::MavenSearch.pom_for(pom_key, pom_file)
 
         adapter = Pom2spec::SpecAdapter.new(pom, :binary => binary?,
           :bootstrap => bootstrap?, :jpp => jpp?, :fmvn => fmvn?)

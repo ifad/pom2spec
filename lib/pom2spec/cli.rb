@@ -47,6 +47,11 @@ module Pom2spec
     
     def execute
 
+      unless jpp? or fmvn?
+        log.error "Please specify either --jpp or --fmvn"
+        return 1
+      end
+
       adapters = []
 
       key_list.each do |key|
